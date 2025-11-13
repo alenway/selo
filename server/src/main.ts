@@ -6,7 +6,7 @@ async function bootstrap() {
 
   // Enable CORS for React frontend
   app.enableCors({
-    origin: 'http://localhost:5173', // Vite default port
+    origin: ['selo-six.vercel.app', 'http://localhost:5173'], // Vite default port
     methods: ['GET', 'POST', 'PATCH', 'DELETE'],
     credentials: true,
   });
