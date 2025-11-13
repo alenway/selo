@@ -1,7 +1,7 @@
 // pages/ArchivePage.tsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import type { Note } from "../types/Note";
+import type { Note } from "../../types/Note";
 
 const ArchivePage: React.FC = () => {
     const [archivedNotes, setArchivedNotes] = useState<Note[]>([]);
