@@ -1,6 +1,7 @@
 // pages/NotesPage.tsx
 import React, { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
+import { apiService } from "../../services/api.service";
 import type { Note } from "../../types/Note";
 
 const Notes: React.FC = () => {
@@ -9,18 +10,59 @@ const Notes: React.FC = () => {
     const [selectedTag, setSelectedTag] = useState<string>("all");
     const [sortBy, setSortBy] = useState<"date" | "title">("date");
     const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
+    const [loading, setLoading] = useState(true);
 
-    // Load notes from localStorage
+    // Load notes from API
     useEffect(() => {
-        const savedNotes = localStorage.getItem("notes");
-        if (savedNotes) {
-            const parsedNotes = JSON.parse(savedNotes).map((note: any) => ({
-                ...note,
-                createdAt: new Date(note.createdAt),
-                updatedAt: new Date(note.updatedAt),
-            }));
-            setNotes(parsedNotes);
-        }
+        const fetchNotes = async () => {
+            try {
+                setLoading(true);
+                const response = await apiService.notes.getAll();
+                console.log("API Response:", response); // Add this line
+                console.log("Response data:", response.data); // Add this line
+
+                // const apiNotes = response.data;
+
+                //real data
+                setLoading(true);
+                // const response = await apiService.notes.getAll();
+                const apiNotes = response.data;
+
+                // Transform API data to match your Note type
+                const transformedNotes = apiNotes.map((note: any) => ({
+                    id: note._id, // Convert _id to id
+                    title: note.title,
+                    content: note.content,
+                    tags: note.tags,
+                    isPinned: note.isPinned,
+                    createdAt: new Date(note.createdAt),
+                    updatedAt: new Date(note.updatedAt),
+                }));
+
+                setNotes(transformedNotes);
+
+                // Optional: Save to localStorage for offline access
+                localStorage.setItem("notes", JSON.stringify(transformedNotes));
+            } catch (error) {
+                console.error("Error fetching notes:", error);
+                // Fallback to localStorage if API fails
+                const savedNotes = localStorage.getItem("notes");
+                if (savedNotes) {
+                    const parsedNotes = JSON.parse(savedNotes).map(
+                        (note: any) => ({
+                            ...note,
+                            createdAt: new Date(note.createdAt),
+                            updatedAt: new Date(note.updatedAt),
+                        })
+                    );
+                    setNotes(parsedNotes);
+                }
+            } finally {
+                setLoading(false);
+            }
+        };
+
+        fetchNotes();
     }, []);
 
     // Get all unique tags from notes
@@ -56,20 +98,41 @@ const Notes: React.FC = () => {
     const pinnedNotes = filteredNotes.filter((note) => note.isPinned);
     const otherNotes = filteredNotes.filter((note) => !note.isPinned);
 
-    const handleDeleteNote = (id: string) => {
+    const handleDeleteNote = async (id: string) => {
         if (window.confirm("Are you sure you want to delete this note?")) {
-            const updatedNotes = notes.filter((note) => note.id !== id);
-            setNotes(updatedNotes);
-            localStorage.setItem("notes", JSON.stringify(updatedNotes));
+            try {
+                await apiService.notes.delete(id);
+                const updatedNotes = notes.filter((note) => note.id !== id);
+                setNotes(updatedNotes);
+                localStorage.setItem("notes", JSON.stringify(updatedNotes));
+            } catch (error) {
+                console.error("Error deleting note:", error);
+                alert("Failed to delete note");
+            }
         }
     };
 
-    const handleTogglePin = (id: string) => {
-        const updatedNotes = notes.map((note) =>
-            note.id === id ? { ...note, isPinned: !note.isPinned } : note
-        );
-        setNotes(updatedNotes);
-        localStorage.setItem("notes", JSON.stringify(updatedNotes));
+    const handleTogglePin = async (id: string) => {
+        try {
+            const noteToUpdate = notes.find((note) => note.id === id);
+            if (!noteToUpdate) return;
+
+            const updatedNoteData = {
+                ...noteToUpdate,
+                isPinned: !noteToUpdate.isPinned,
+            };
+
+            await apiService.notes.update(id, updatedNoteData);
+
+            const updatedNotes = notes.map((note) =>
+                note.id === id ? { ...note, isPinned: !note.isPinned } : note
+            );
+            setNotes(updatedNotes);
+            localStorage.setItem("notes", JSON.stringify(updatedNotes));
+        } catch (error) {
+            console.error("Error updating note:", error);
+            alert("Failed to update note");
+        }
     };
 
     const formatDate = (date: Date) => {
@@ -88,6 +151,20 @@ const Notes: React.FC = () => {
             ? content.substring(0, maxLength) + "..."
             : content;
     };
+
+    // Loading state
+    if (loading) {
+        return (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div className="text-center py-12">
+                    <div className="text-gray-400 text-6xl mb-4">⏳</div>
+                    <h3 className="text-xl font-semibold text-gray-600 mb-2">
+                        Loading notes...
+                    </h3>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">

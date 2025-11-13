@@ -1,7 +1,10 @@
+// services/api.service.ts
 import axios from "axios";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
 const api = axios.create({
-    baseURL: "http://localhost:3000", // NestJS backend URL
+    baseURL: API_URL,
     timeout: 10000,
 });
 
@@ -12,7 +15,7 @@ export const apiService = {
         getById: (id: string) => api.get(`/notes/${id}`),
         create: (noteData: any) => api.post("/notes", noteData),
         update: (id: string, noteData: any) =>
-            api.patch(`/notes/${id}`, noteData),
+            api.put(`/notes/${id}`, noteData), // Changed from patch to put
         delete: (id: string) => api.delete(`/notes/${id}`),
     },
 };
